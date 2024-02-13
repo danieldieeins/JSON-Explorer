@@ -1,16 +1,18 @@
 package live.nerotv.json_explorer;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import live.nerotv.Main;
 import live.nerotv.json_explorer.utils.IOUtils;
 
 import javax.swing.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 public class APIExplorer {
 
@@ -60,13 +62,18 @@ public class APIExplorer {
         frame.getButton().setEnabled(false);
         try {
             frame.getOutputArea().setText("Resolving...");
-            URI uri = encode(urlString);
-            URL url = uri.toURL();
-            String urlString_ = urlString.toLowerCase().replace("https://","").replace("http://","");
-            if(urlString_.startsWith("api.curseforge.com")) {
-                frame.getOutputArea().setText(formatJson(resolveCurseforgeRequest(url)));
+            if(urlString.startsWith("http")) {
+                URI uri = encode(urlString);
+                URL url = uri.toURL();
+                String urlString_ = urlString.toLowerCase().replace("https://", "").replace("http://", "");
+                if (urlString_.startsWith("api.curseforge.com")) {
+                    frame.getOutputArea().setText(formatJson(resolveCurseforgeRequest(url)));
+                } else {
+                    frame.getOutputArea().setText(formatJson(resolveRequest(url)));
+                }
             } else {
-                frame.getOutputArea().setText(formatJson(resolveRequest(url)));
+                String urlString_ = urlString.replace("file:///", "").replace("file://", "");
+                frame.getOutputArea().setText(resolveLocalRequest(urlString_));
             }
             frame.getButton().setText("Make request");
             frame.getButton().setEnabled(true);
@@ -96,6 +103,17 @@ public class APIExplorer {
             if(connection != null) {
                 connection.disconnect();
             }
+        }
+    }
+
+    private String resolveLocalRequest(String path) {
+        try {
+            File file = new File(URLDecoder.decode(path,StandardCharsets.UTF_8));
+            Reader reader = new FileReader(file.getAbsolutePath());
+            JsonElement json = JsonParser.parseReader(reader);
+            return formatJson(json.toString());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
